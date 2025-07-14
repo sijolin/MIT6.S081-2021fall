@@ -111,14 +111,14 @@ sys_trace(void) {
 // collects information about the running system.
 uint64
 sys_sysinfo(void) {
-  uint64 st; // user address
+  uint64 st; // user address (points to struct sysinfo)
   struct sysinfo sf;
 
   if (argaddr(0, &st) < 0)
     return -1;
   sf.freemem = freememSize();
   sf.nproc = nproc_active();
-  if (copyout(myproc()->pagetable, st, (char *)&sf, sizeof(sf)))
+  if (copyout(myproc()->pagetable, st, (char *)&sf, sizeof(sf)) < 0)
     return -1;
   return 0;
 }
