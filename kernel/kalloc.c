@@ -80,3 +80,14 @@ kalloc(void)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
 }
+
+// get the free memory size of user space
+uint64 freememSize(void) {
+  struct run *r = kmem.freelist;
+  uint64 i = 0;
+  while (r) {
+    i++;
+    r = r->next;
+  }
+  return i * PGSIZE;
+}

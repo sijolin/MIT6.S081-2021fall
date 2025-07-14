@@ -295,6 +295,10 @@ fork(void)
   // Cause fork to return 0 in the child.
   np->trapframe->a0 = 0;
 
+  // copy the trace mask.
+  np->syscallnum = p->syscallnum;
+
+
   // increment reference counts on open file descriptors.
   for(i = 0; i < NOFILE; i++)
     if(p->ofile[i])
@@ -653,4 +657,16 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+// get the num of procs that aren't UNUSED.
+uint64 nproc_active(void) {
+  int i = 0;
+  uint64 n = 0;
+  while (i < NPROC) {
+    if (proc[i].state != UNUSED) 
+      n++;
+    i++;
+  }
+  return n;
 }
