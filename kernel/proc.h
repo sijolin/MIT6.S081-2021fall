@@ -1,7 +1,7 @@
 // Saved registers for kernel context switches.
 struct context {
-  uint64 ra;
-  uint64 sp;
+  uint64 ra; // return address
+  uint64 sp; // stack pointer
 
   // callee-saved
   uint64 s0;
@@ -56,7 +56,7 @@ struct trapframe {
   /*  88 */ uint64 t2;
   /*  96 */ uint64 s0;
   /* 104 */ uint64 s1;
-  /* 112 */ uint64 a0;
+  /* 112 */ uint64 a0; // a0-a7 are the syscall arguments
   /* 120 */ uint64 a1;
   /* 128 */ uint64 a2;
   /* 136 */ uint64 a3;
@@ -92,7 +92,7 @@ struct proc {
   int killed;                  // If non-zero, have been killed
   int xstate;                  // Exit status to be returned to parent's wait
   int pid;                     // Process ID
-  int syscallnum;              // of syscall to call
+  int syscallnum;              // Syscall number for the current syscall
 
   // wait_lock must be held when using this:
   struct proc *parent;         // Parent process
