@@ -80,7 +80,41 @@ sys_sleep(void)
 int
 sys_pgaccess(void)
 {
-  // lab pgtbl: your code here.
+  uint64 start; // 起始虚拟地址
+  int len;   // 页面数量
+  uint64 mask;// 位掩码缓冲区地址
+
+  // 获取参数
+  if (argaddr(0, &start) < 0 || argint(1, &len) < 0 
+    || argaddr(2, &mask) < 0)
+    return -1;
+  
+  // 对应掩码缓冲区长度
+  if (len < 1 || len > 64)
+    return -1;
+
+  struct proc *p = myproc();
+  pagetable_t pagetable = p->pagetable;
+
+  // 在内核中创建临时缓冲区存储结果
+  uint64 abits = 0;
+
+  for (int i = 0; i < len; ++i) {
+    uint64 va = start + i * PGSIZE;
+    pte_t *pte = walk(pagetable, va, 0); // 获取对应的PTE
+    
+    if (pte == 0) continue; // PTE不存在
+
+    if (*pte & PTE_A) {
+      abits |= (1 << i);
+      *pte &= ~PTE_A; // 清除
+    }
+  }
+  
+  // 复制到用户空间
+  if (copyout(pagetable, mask, (char *)&abits, sizeof(abits)) < 0)
+    return -1;
+
   return 0;
 }
 #endif
@@ -106,4 +140,45 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+int sys_pageccess(void) {
+  uint64 start; // 起始虚拟地址
+  int len;   // 页面数量
+  uint64 mask;// 位掩码缓冲区地址
+
+  // 获取参数
+  if (argaddr(0, &start) < 0 || argint(1, &len) < 0 
+    || argaddr(2, &mask) < 0)
+    return -1;
+  
+  // 对应掩码缓冲区长度
+  if (len < 1 || len > 64)
+    return -1;
+
+  struct proc *p = myproc();
+  pagetable_t pagetable = p->pagetable;
+
+  vmprint(pagetable);
+
+  // 在内核中创建临时缓冲区存储结果
+  uint64 abits = 0;
+
+  for (int i = 0; i < len; ++i) {
+    uint64 va = start + i * PGSIZE;
+    pte_t *pte = walk(pagetable, va, 0); // 获取对应的PTE
+    
+    if (pte == 0) continue; // PTE不存在
+
+    if (*pte & PTE_A) {
+      abits |= (1 << i);
+      *pte &= ~PTE_A; // 清除
+    }
+  }
+  
+  // 复制到用户空间
+  if (copyout(pagetable, mask, (char *)&abits, sizeof(abits)) < 0)
+    return -1;
+
+  return 0;
 }

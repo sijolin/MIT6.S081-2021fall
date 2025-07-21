@@ -1,0 +1,8 @@
+Speed up system calls
+1. sysinfo()
+返回系统统计信息（如空闲内存、进程数等）
+2. uptime()
+返回系统启动后的时钟滴答数
+
+Print a page table
+第0页为text段，第2页为data段，用户不能访问第2页的内容，其为unused
