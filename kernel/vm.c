@@ -432,3 +432,26 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+void vmprint_helper(pagetable_t pagetable, int level) {
+  for (int i = 0; i < 512; ++i) {
+    pte_t pte = pagetable[i];
+    if ((pte & PTE_V) && (pte & (PTE_R | PTE_W | PTE_X)) == 0) { // 中间页表项
+      uint64 child = PTE2PA(pte); // 下一级页表的物理地址
+      for (int j = 0; j <= level; ++j) { // 根据当前level打印缩进
+        printf("..");
+        if (j + 1 <= level) printf(" ");
+      }
+      printf("%d: pte %p pa %p\n", i, pte, child);
+      vmprint_helper((pagetable_t)child, level + 1); // 递归处理下一级页表
+    } else if (pte & PTE_V) { // 指向实际的物理页（最底层页表）
+      uint64 child = PTE2PA(pte);
+      printf(".. .. ..%d: pte %p pa %p\n", i, pte, child);
+    }
+  }
+}
+
+void vmprint(pagetable_t pagetable) {
+  printf("page table %p\n", pagetable);
+  vmprint_helper(pagetable, 0);
+}

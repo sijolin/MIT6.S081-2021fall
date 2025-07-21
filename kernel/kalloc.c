@@ -26,17 +26,17 @@ struct {
 void
 kinit()
 {
-  initlock(&kmem.lock, "kmem");
-  freerange(end, (void*)PHYSTOP);
+  initlock(&kmem.lock, "kmem"); // 初始化自旋锁
+  freerange(end, (void*)PHYSTOP); // 释放[end, PHYSTOP]到空闲链表
 }
 
 void
 freerange(void *pa_start, void *pa_end)
 {
   char *p;
-  p = (char*)PGROUNDUP((uint64)pa_start);
+  p = (char*)PGROUNDUP((uint64)pa_start); // 对齐到页边界
   for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE)
-    kfree(p);
+    kfree(p); // 逐页释放
 }
 
 // Free the page of physical memory pointed at by v,
@@ -47,15 +47,16 @@ void
 kfree(void *pa)
 {
   struct run *r;
-
+  
+  // 检查物理地址是否合法
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
-
-  // Fill with junk to catch dangling refs.
+  
+  // 内存清零，防止残留数据
   memset(pa, 1, PGSIZE);
-
+  
+  // 将物理页转为链表节点，插入空闲链表
   r = (struct run*)pa;
-
   acquire(&kmem.lock);
   r->next = kmem.freelist;
   kmem.freelist = r;
@@ -73,7 +74,7 @@ kalloc(void)
   acquire(&kmem.lock);
   r = kmem.freelist;
   if(r)
-    kmem.freelist = r->next;
+    kmem.freelist = r->next; // 从链表头部移除
   release(&kmem.lock);
 
   if(r)

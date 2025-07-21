@@ -9,8 +9,7 @@
 
 static int loadseg(pde_t *pgdir, uint64 addr, struct inode *ip, uint offset, uint sz);
 
-int
-exec(char *path, char **argv)
+int exec(char *path, char **argv)
 {
   char *s, *last;
   int i, off;
@@ -28,17 +27,18 @@ exec(char *path, char **argv)
     return -1;
   }
   ilock(ip);
-
-  // Check ELF header
+  
+  // 检查文件头
   if(readi(ip, 0, (uint64)&elf, 0, sizeof(elf)) != sizeof(elf))
     goto bad;
   if(elf.magic != ELF_MAGIC)
     goto bad;
-
+  
+  // 分配一个没有用户映射的新页表
   if((pagetable = proc_pagetable(p)) == 0)
     goto bad;
-
-  // Load program into memory.
+  
+  // 加载
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, 0, (uint64)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;
@@ -49,11 +49,13 @@ exec(char *path, char **argv)
     if(ph.vaddr + ph.memsz < ph.vaddr)
       goto bad;
     uint64 sz1;
+    // 为每个ELF段分配内存
     if((sz1 = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz)) == 0)
       goto bad;
     sz = sz1;
     if((ph.vaddr % PGSIZE) != 0)
       goto bad;
+    // 将每个段加载到内存中
     if(loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
       goto bad;
   }
@@ -63,15 +65,16 @@ exec(char *path, char **argv)
 
   p = myproc();
   uint64 oldsz = p->sz;
-
-  // Allocate two pages at the next page boundary.
-  // Use the second as the user stack.
+ 
+  // 在用户地址空间的顶部预留两个连续的物理页
+  // 将第二个页作为用户栈，并在栈下方设置一个不可访问的Guard Page
   sz = PGROUNDUP(sz);
   uint64 sz1;
   if((sz1 = uvmalloc(pagetable, sz, sz + 2*PGSIZE)) == 0)
     goto bad;
   sz = sz1;
-  uvmclear(pagetable, sz-2*PGSIZE);
+  uvmclear(pagetable, sz-2*PGSIZE); // 设置Guard Page
+  // 初始化栈指针
   sp = sz;
   stackbase = sp - PGSIZE;
 
@@ -83,6 +86,7 @@ exec(char *path, char **argv)
     sp -= sp % 16; // riscv sp must be 16-byte aligned
     if(sp < stackbase)
       goto bad;
+    // 通过copyout将传入参数放在stack的顶端
     if(copyout(pagetable, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
       goto bad;
     ustack[argc] = sp;
@@ -116,6 +120,8 @@ exec(char *path, char **argv)
   p->trapframe->sp = sp; // initial stack pointer
   proc_freepagetable(oldpagetable, oldsz);
 
+  if (p->pid == 1)
+    vmprint(p->pagetable);
   return argc; // this ends up in a0, the first argument to main(argc, argv)
 
  bad:
