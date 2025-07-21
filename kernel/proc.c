@@ -288,7 +288,7 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
-  np->syscallnum = p->syscallnum;
+  np->trace_mask = p->trace_mask; // 子进程继承父进程的追踪掩码
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);

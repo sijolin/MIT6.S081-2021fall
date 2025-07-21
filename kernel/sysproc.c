@@ -102,9 +102,9 @@ uint64
 sys_trace(void) {
   int mask;
 
-  if (argint(0, &mask) < 0)
+  if (argint(0, &mask) < 0) // 获取掩码
     return -1;
-  myproc()->syscallnum = mask;
+  myproc()->trace_mask = mask; // 设置追踪掩码
   return 0;
 }
 
