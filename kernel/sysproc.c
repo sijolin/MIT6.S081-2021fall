@@ -70,6 +70,7 @@ sys_sleep(void)
     sleep(&ticks, &tickslock);
   }
   release(&tickslock);
+  backtrace();
   return 0;
 }
 
@@ -94,4 +95,55 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+uint64 sys_sigalarm(void) {
+  int ticks;
+  uint64 handler;
+  if (argint(0, &ticks) < 0 || argaddr(1, &handler) < 0)
+    return -1;
+  struct proc *p = myproc();
+  if (ticks < 0)
+    return -1;
+  p->interval = ticks;              // 设置警报间隔
+  p->handler = (void (*)())handler; // 设置警报处理函数
+  return 0;
+}
+
+uint64 sys_sigretrun(void) {
+  struct proc *p = myproc();
+  p->trapframe->epc = p->save_epc;
+  p->trapframe->ra = p->save_ra;
+  p->trapframe->sp = p->save_sp;
+  p->trapframe->gp = p->save_gp;
+  p->trapframe->tp = p->save_tp;
+  p->trapframe->t0 = p->save_t0;
+  p->trapframe->t1 = p->save_t1;
+  p->trapframe->t2 = p->save_t2;
+  p->trapframe->t3 = p->save_t3;
+  p->trapframe->t4 = p->save_t4;
+  p->trapframe->t5 = p->save_t5;
+  p->trapframe->t6 = p->save_t6;
+  p->trapframe->s0 = p->save_s0;
+  p->trapframe->s1 = p->save_s1;
+  p->trapframe->s2 = p->save_s2;
+  p->trapframe->s3 = p->save_s3;
+  p->trapframe->s4 = p->save_s4;
+  p->trapframe->s5 = p->save_s5;
+  p->trapframe->s6 = p->save_s6;
+  p->trapframe->s7 = p->save_s7;
+  p->trapframe->s8 = p->save_s8;
+  p->trapframe->s9 = p->save_s9;
+  p->trapframe->s10 = p->save_s10;
+  p->trapframe->s11 = p->save_s11;
+  p->trapframe->a0 = p->save_a0;
+  p->trapframe->a1 = p->save_a1;
+  p->trapframe->a2 = p->save_a2;
+  p->trapframe->a3 = p->save_a3;
+  p->trapframe->a4 = p->save_a4;
+  p->trapframe->a5 = p->save_a5;
+  p->trapframe->a6 = p->save_a6;
+  p->trapframe->a7 = p->save_a7;
+  p->in_handler = 0; // 重置为不在处理函数中
+  return 0;
 }

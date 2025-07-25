@@ -141,6 +141,12 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
+  // 初始化alarm字段
+  p->interval = 0; // 距上次警报的时钟数
+  p->handler = 0;  // 警报处理程序
+  p->ticks = 0;    // 间隔
+  p->in_handler = 0; // 是否在处理函数中
+
   return p;
 }
 
