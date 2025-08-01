@@ -148,8 +148,8 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   for(;;){
     if((pte = walk(pagetable, a, 1)) == 0)
       return -1;
-    if(*pte & PTE_V)
-      panic("mappages: remap");
+    /* if(*pte & PTE_V)
+      panic("mappages: remap"); */ 
     *pte = PA2PTE(pa) | perm | PTE_V;
     if(a == last)
       break;
@@ -302,23 +302,19 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 {
   pte_t *pte;
   uint64 pa, i;
-  uint flags;
-  char *mem;
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
     if((*pte & PTE_V) == 0)
       panic("uvmcopy: page not present");
+
     pa = PTE2PA(*pte);
-    flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
+    *pte = (*pte & ~PTE_W) | PTE_COW; // 修改父页flags
+    if(mappages(new, i, PGSIZE, (uint64)pa, PTE_FLAGS(*pte)) != 0){ // 设置映射和子页flags
       goto err;
     }
+    refcnt_add(pa); // 增加引用计数
   }
   return 0;
 
@@ -347,12 +343,20 @@ int
 copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0;
+  pte_t *pte;
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
     pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0)
       return -1;
+
+    pte = walk(pagetable, va0, 0);
+    if (*pte & PTE_COW) {
+      refcnt_new(va0, pagetable);
+      pa0 = PTE2PA(*pte); // 需要更新pa0，否则还是写入原页
+    }
+
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
