@@ -67,7 +67,10 @@ usertrap(void)
     syscall();
   } else if (r_scause() == 15) { // 存储页错误
     uint64 va = r_stval();
-    if (refcnt_new(va, p->pagetable) == -1) // 空闲内存不足，终止进程
+
+    if (va >= MAXVA || (va <= PGROUNDDOWN(p->trapframe->sp) && va >= PGROUNDDOWN(p->trapframe->sp) - PGSIZE))
+      p->killed = 1;
+    else if (refcnt_new(va, p->pagetable) == -1) // 空闲内存不足，终止进程
       p->killed = 1;
   } else if((which_dev = devintr()) != 0){
     // ok
